@@ -1,0 +1,509 @@
+{% comment %} {% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendee Management</title>
+    <style>
+        .hidden {
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        #messageContainer {
+            margin-bottom: 20px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        #loadingIndicator {
+            display: none;
+            font-weight: bold;
+            color: blue;
+        }
+        button {
+            margin: 5px;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Attendee Management</h1>
+
+        <button id="addAttendeeButton">Add Attendee</button>
+        <button id="viewAttendeeButton">View Attendees</button>
+
+        <div id="messageContainer"></div>
+        <div id="loadingIndicator">Loading...</div>
+
+        <div id="addAttendeeForm" class="hidden">
+            <h2>Add/Update Attendee</h2>
+            <input type="hidden" id="attendee_id">
+            <div>
+                <input type="text" id="attendee_name" placeholder="Attendee Name" required>
+            </div>
+            <div>
+                <input type="email" id="attendee_email" placeholder="Attendee Email" required>
+            </div>
+            <div>
+                <select id="attendee_event">
+                    <option value="">Select Event</option>
+                    <!-- Events will be dynamically populated here -->
+                </select>
+            </div>
+            <button id="saveAttendeeButton">Save</button>
+            <button id="cancelButton">Cancel</button>
+        </div>
+
+        <div id="attendeeTable" class="hidden">
+            <h2>Attendees List</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                        <th>Assigned Event</th>
+                    </tr>
+                </thead>
+                <tbody id="attendeeTableBody">
+                    <!-- Attendee rows will be dynamically populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <button onclick="window.location.href='{% url 'landing_page' %}'">Back to Home</button>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            const apiUrl = 'http://127.0.0.1:8000/api/attendees/';
+            const eventsApiUrl = 'http://127.0.0.1:8000/api/events/';
+            let events = [];
+
+            function showLoading() {
+                $('#loadingIndicator').show();
+            }
+
+            function hideLoading() {
+                $('#loadingIndicator').hide();
+            }
+
+            function loadAttendees() {
+                showLoading();
+                $.ajax({
+                    url: apiUrl,
+                    method: 'GET',
+                    success: function(data) {
+                        const attendeeTableBody = $('#attendeeTableBody');
+                        attendeeTableBody.empty();
+                        data.forEach(attendee => {
+                            const eventName = events.find(event => event.id === attendee.assigned_event)?.name || 'No Event Assigned';
+                            attendeeTableBody.append(`
+                                <tr>
+                                    <td>${attendee.name}</td>
+                                    <td>${attendee.email}</td>
+                                    <td>
+                                        <button onclick="editAttendee(${attendee.id})">Edit</button>
+                                        <button onclick="deleteAttendee(${attendee.id})">Delete</button>
+                                    </td>
+                                    <td>${eventName}</td>
+                                </tr>
+                            `);
+                        });
+                        hideLoading();
+                    },
+                    error: function() {
+                        $('#messageContainer').html('<p class="error">Failed to load attendees.</p>');
+                        hideLoading();
+                    }
+               
+            });
+        }
+
+        function loadEvents() {
+            showLoading();
+            $.ajax({
+                url: eventsApiUrl,
+                method: 'GET',
+                success: function(data) {
+                    events = data;
+                    const attendeeEventDropdown = $('#attendee_event');
+                    attendeeEventDropdown.empty();
+                    attendeeEventDropdown.append('<option value="">Select Event</option>');
+                    events.forEach(event => {
+                        attendeeEventDropdown.append(`<option value="${event.id}">${event.name}</option>`);
+                    });
+                    loadAttendees();
+                },
+                error: function() {
+                    $('#messageContainer').html('<p class="error">Failed to load events.</p>');
+                    hideLoading();
+                }
+            });
+        }
+
+        $('#saveAttendeeButton').click(function() {
+            const attendeeId = $('#attendee_id').val();
+            const name = $('#attendee_name').val();
+            const email = $('#attendee_email').val();
+            const eventId = $('#attendee_event').val();
+            const method = attendeeId ? 'PUT' : 'POST';
+            const url = attendeeId ? `${apiUrl}${attendeeId}/` : apiUrl;
+
+            if (!name || !email) {
+                $('#messageContainer').html('<p class="error">Name and email are required.</p>');
+                return;
+            }
+
+            $.ajax({
+                url: url,
+                method: method,
+                data: JSON.stringify({ name, email, assigned_event: eventId }),
+                contentType: 'application/json',
+                success: function() {
+                    $('#messageContainer').html('<p class="success">Attendee saved successfully!</p>');
+                    loadAttendees();
+                    $('#addAttendeeForm').addClass('hidden');
+                },
+                error: function() {
+                    $('#messageContainer').html('<p class="error">Failed to save attendee.</p>');
+                }
+            });
+        });
+
+        window.deleteAttendee = function(id) {
+            if (confirm('Are you sure you want to delete this attendee?')) {
+                $.ajax({
+                    url: `${apiUrl}${id}/`,
+                    method: 'DELETE',
+                    success: function() {
+                        $('#messageContainer').html('<p class="success">Attendee deleted successfully!</p>');
+                        loadAttendees();
+                    },
+                    error: function() {
+                        $('#messageContainer').html('<p class="error">Failed to delete attendee.</p>');
+                    }
+                });
+            }
+        };
+
+        window.editAttendee = function(id) {
+            $.ajax({
+                url: `${apiUrl}${id}/`,
+                method: 'GET',
+                success: function(data) {
+                    $('#attendee_id').val(data.id);
+                    $('#attendee_name').val(data.name);
+                    $('#attendee_email').val(data.email);
+                    $('#attendee_event').val(data.assigned_event || '');
+                    $('#addAttendeeForm').removeClass('hidden');
+                },
+                error: function() {
+                    $('#messageContainer').html('<p class="error">Failed to load attendee details.</p>');
+                }
+            });
+        };
+
+        $('#addAttendeeButton').click(function() {
+            $('#addAttendeeForm').removeClass('hidden');
+            $('#attendee_id').val('');
+            $('#attendee_name').val('');
+            $('#attendee_email').val('');
+            $('#attendee_event').val('');
+        });
+
+        $('#cancelButton').click(function() {
+            $('#addAttendeeForm').addClass('hidden');
+        });
+
+        $('#viewAttendeeButton').click(function() {
+            $('#attendeeTable').toggleClass('hidden');
+            loadAttendees();
+        });
+
+        loadEvents();
+    });
+    </script>
+</body>
+</html> {% endcomment %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendee Management</title>
+    <style>
+        /* Basic styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .hidden {
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        #messageContainer {
+            margin-bottom: 20px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        #loadingIndicator {
+            display: none;
+            font-weight: bold;
+            color: blue;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Attendee Management</h1>
+
+        <button id="addAttendeeButton">Add Attendee</button>
+        <button id="viewAttendeeButton">View Attendees</button>
+
+        <div id="messageContainer"></div>
+        <div id="loadingIndicator">Loading...</div>
+
+        <div id="addAttendeeForm" class="hidden">
+            <h2>Add/Update Attendee</h2>
+            <input type="hidden" id="attendee_id">
+            <div>
+                <input type="text" id="attendee_name" placeholder="Attendee Name" required>
+            </div>
+            <div>
+                <input type="email" id="attendee_email" placeholder="Attendee Email" required>
+            </div>
+            <div>
+                <select id="attendee_event">
+                    <option value="">Select Event</option>
+                    <!-- Events will be dynamically populated here -->
+                </select>
+            </div>
+            <button id="saveAttendeeButton">Save</button>
+            <button id="cancelButton">Cancel</button>
+        </div>
+
+        <div id="attendeeTable" class="hidden">
+            <h2>Attendees List</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                        <th>Assigned Event</th>
+                    </tr>
+                </thead>
+                <tbody id="attendeeTableBody">
+                    <!-- Attendee rows will be dynamically populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <button onclick="window.location.href='{% url 'landing_page' %}'">Back to Home</button>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            const apiUrl = 'http://127.0.0.1:8000/api/attendees/';
+            const eventsApiUrl = 'http://127.0.0.1:8000/api/events/';
+            let events = [];
+
+            function showLoading() {
+                $('#loadingIndicator').show();
+            }
+
+            function hideLoading() {
+                $('#loadingIndicator').hide();
+            }
+
+            function loadAttendees() {
+                showLoading();
+                $.ajax({
+                    url: apiUrl,
+                    method: 'GET',
+                    success: function(data) {
+                        const attendeeTableBody = $('#attendeeTableBody');
+                        attendeeTableBody.empty();
+                        data.forEach(attendee => {
+                            const eventName = events.find(event => event.id === attendee.assigned_event)?.name || 'No Event Assigned';
+                            attendeeTableBody.append(`
+                                <tr>
+                                    <td>${attendee.name}</td>
+                                    <td>${attendee.email}</td>
+                                    <td>
+ <button onclick="editAttendee(${attendee.id})">Edit</button>
+                                        <button onclick="deleteAttendee(${attendee.id})">Delete</button>
+                                    </td>
+                                    <td>${eventName}</td>
+                                </tr>
+                            `);
+                        });
+                        hideLoading();
+                    },
+                    error: function() {
+                        $('#messageContainer').html('<p class="error">Failed to load attendees.</p>');
+                        hideLoading();
+                    }
+                });
+            }
+
+            function loadEvents() {
+                showLoading();
+                $.ajax({
+                    url: eventsApiUrl,
+                    method: 'GET',
+                    success: function(data) {
+                        events = data;
+                        const attendeeEventDropdown = $('#attendee_event');
+                        attendeeEventDropdown.empty();
+                        attendeeEventDropdown.append('<option value="">Select Event</option>');
+                        events.forEach(event => {
+                            attendeeEventDropdown.append(`<option value="${event.id}">${event.name}</option>`);
+                        });
+                        loadAttendees();
+                    },
+                    error: function() {
+                        $('#messageContainer').html('<p class="error">Failed to load events.</p>');
+                        hideLoading();
+                    }
+                });
+            }
+
+            $('#saveAttendeeButton').click(function() {
+                const attendeeId = $('#attendee_id').val();
+                const name = $('#attendee_name').val();
+                const email = $('#attendee_email').val();
+                const eventId = $('#attendee_event').val();
+                const method = attendeeId ? 'PUT' : 'POST';
+                const url = attendeeId ? `${apiUrl}${attendeeId}/` : apiUrl;
+
+                if (!name || !email) {
+                    $('#messageContainer').html('<p class="error">Name and email are required.</p>');
+                    return;
+                }
+
+                $.ajax({
+                    url: url,
+                    method: method,
+                    data: JSON.stringify({ name, email, assigned_event: eventId }),
+                    contentType: 'application/json',
+                    success: function() {
+                        $('#messageContainer').html('<p class="success">Attendee saved successfully!</p>');
+                        loadAttendees();
+                        $('#addAttendeeForm').addClass('hidden');
+                    },
+                    error: function() {
+                        $('#messageContainer').html('<p class="error">Failed to save attendee.</p>');
+                    }
+                });
+            });
+
+            window.deleteAttendee = function(id) {
+                if (confirm('Are you sure you want to delete this attendee?')) {
+                    $.ajax({
+                        url: `${apiUrl}${id}/`,
+                        method: 'DELETE',
+                        success: function() {
+                            $('#messageContainer').html('<p class="success">Attendee deleted successfully!</p>');
+                            loadAttendees();
+                        },
+                        error: function() {
+                            $('#messageContainer').html('<p class="error">Failed to delete attendee.</p>');
+                        }
+                    });
+                }
+            };
+
+            window.editAttendee = function(id) {
+                $.ajax({
+                    url: `${apiUrl}${id}/`,
+                    method: 'GET',
+                    success: function(data) {
+                        $('#attendee_id').val(data.id);
+                        $('#attendee_name').val(data.name);
+                        $('#attendee_email').val(data.email);
+                        $('#attendee_event').val(data.assigned_event || '');
+                        $('#addAttendeeForm').removeClass('hidden');
+                        $('#attendeeTable').addClass('hidden'); // Hide the attendee table
+                    },
+                    error: function() {
+                        $('#messageContainer').html('<p class="error">Failed to load attendee details.</p>');
+                    }
+                });
+            };
+
+            $('#addAttendeeButton').click(function() {
+                $('#addAttendeeForm').removeClass('hidden');
+                $('#attendee_id').val('');
+                $('#attendee_name').val('');
+                $('#attendee_email').val('');
+                $('#attendee_event').val('');
+                $('#attendeeTable').addClass('hidden'); // Hide the attendee table
+            });
+
+            $('#cancelButton').click(function() {
+                $('#addAttendeeForm').addClass('hidden');
+            });
+
+            $('#viewAttendeeButton').click(function() {
+                $('#attendeeTable').toggleClass('hidden');
+                $('#addAttendeeForm').addClass('hidden'); // Hide the add form
+                loadAttendees();
+            });
+
+            loadEvents();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <title>{% block title %}Event Management{% endblock %}</title>
+</head>
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li><a href="{% url 'event_management' %}">Event Management</a></li>
+                <li><a href="{% url 'attendee_management' %}">Attendee Management</a></li>
+                <li><a href="{% url 'task_tracker' %}">Task Tracker</a></li>
+                <li><a href="{% url 'user_logout' %}">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <script src="{% static 'js/scripts.js' %}"></script>
+</body>
+</html> {% endcomment %}
+<!-- templates/landing_page.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Management Dashboard</title>
+</head>
+<body>
+    <h1>Welcome to the Event Management Dashboard</h1>
+    <ul>
+        <li><a href="/events/">Event Management</a></li>
+        <li><a href="/attendees/">Attendee Management</a></li>
+        <li><a href="/tasks/">Task Tracker</a></li>
+        <li><a href="/progress/">Progress Visualization</a></li>
+    </ul>
+</body>
+</html>

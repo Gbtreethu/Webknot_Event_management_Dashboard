@@ -1,0 +1,109 @@
+{% comment %} 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Management Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: auto; padding: 20px; background: white; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1, h2 { color: #333; }
+        form { margin-bottom: 20px; }
+        input, textarea, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #28a745; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px; }
+        button:hover { background-color: #218838; }
+        ul { list-style-type: none; padding: 0; }
+        li { background: #e9ecef; margin: 5px 0; padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; }
+        li button { background-color: #dc3545; }
+        li button:hover { background-color: #c82333; }
+    </style>
+    <script src="static/js/app.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Event Management Dashboard</h1>
+
+        <section id="event-management">
+            <h2>Event Management</h2>
+            <div>
+                <button onclick="showEventForm('create')">Add Event</button>
+                <button onclick="loadEvents()">Load Events</button>
+            </div>
+            <form id="eventForm" style="display: none;" onsubmit="handleEventSubmit(event)">
+                <input type="hidden" id="event_id">
+                <input type="text" id="event_name" placeholder="Event Name" required>
+                <textarea id="event_description" placeholder="Description" required></textarea>
+                <input type="text" id="event_location" placeholder="Location" required>
+                <input type="datetime-local" id="event_date" required>
+                <button type="submit">Submit</button>
+                <button type="button" onclick="hideEventForm()">Cancel</button>
+            </form>
+            <ul id="eventList"></ul>
+        </section>
+
+        <section id="attendee-management">
+            <h2>Attendee Management</h2>
+            <div>
+                <button onclick="showAttendeeForm('create')">Add Attendee</button>
+                <button onclick="loadAttendees()">Load Attendees</button>
+            </div>
+            <form id="attendeeForm" style="display: none;" onsubmit="handleAttendeeSubmit(event)">
+                <input type="hidden" id="attendee_id">
+                <input type="text" id="attendee_name" placeholder="Attendee Name" required>
+                <input type="email" id="attendee_email" placeholder="Attendee Email" required>
+                <button type="submit">Submit</button>
+                <button type="button" onclick="hideAttendeeForm()">Cancel</button>
+            </form>
+            <ul id="attendeeList"></ul>
+        </section>
+
+        <section id="task-tracker">
+            <h2>Task Tracker</h2>
+            <div>
+                <button onclick="showTaskForm('create')">Add Task</button>
+                <button onclick="loadTasks()">Load Tasks</button>
+            </div>
+            <form id="taskForm" style="display: none;" onsubmit="handleTaskSubmit(event)">
+                <input type="hidden" id="task_id">
+                <input type="text" id="task_name" placeholder="Task Name" required>
+                <input type="datetime-local" id="task_deadline" required>
+                <select id="task_event_id"></select>
+                <button type="submit">Submit</button>
+                <button type="button" onclick="hideTaskForm()">Cancel</button>
+            </form>
+ <ul id="taskList"></ul>
+        </section>
+    </div>
+</body>
+</html> {% endcomment %} 
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <title>Event Management Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: auto; padding: 20px; background: white; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1 { color: #333; }
+        button { margin: 5px; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+    </style>
+    <script src="{% static 'js/app.js' %}"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Event Management Dashboard</h1>
+        <div>
+            <button onclick="window.location.href='{% url 'event_management' %}'">Event Management</button>
+            <button onclick="window.location.href='{% url 'attendee_management' %}'">Attendee Management</button>
+            <button onclick="window.location.href='{% url 'task_tracker' %}'">Task Tracker</button>
+        </div>
+    </div>
+</body>
+</html>
+

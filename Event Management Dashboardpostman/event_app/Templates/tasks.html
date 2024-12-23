@@ -1,0 +1,329 @@
+{% comment %} <!-- templates/tasks.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management</title>
+    <style>
+        /* static/css/styles.css */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+h1 {
+    color: #333;
+}
+
+form {
+    margin-bottom: 20px;
+}
+
+input, select, button {
+    margin: 5px;
+    padding: 10px;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    margin: 5px 0;
+}
+    </style> 
+</head>
+<body>
+    <h1>Task Management</h1>
+    <form onsubmit="createTask(); return false;">
+        <input type="text" id="task_name" placeholder="Task Name" required>
+        <input type="date" id="task_deadline" required>
+        <select id="task_event_id" required>
+            <!-- Populate with event options dynamically -->
+        </select>
+        <button type="submit">Create Task</button>
+    </form>
+    <ul id="taskList"></ul>
+    <script src="/static/js/app.js"></script>
+</body>
+</html> {% endcomment %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Tracker</title>
+    <style>
+        /* General styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        input, select {
+            margin: 5px 0;
+            padding: 10px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        #messageContainer {
+            margin-bottom: 20px;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        @media (max-width: 600px) {
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Task Tracker</h1>
+
+    <div id="messageContainer"></div>
+
+    <button id="addTaskButton" onclick="showAddForm()">Add Task</button>
+    <button id="viewTaskButton" onclick="showTaskList()">View Tasks</button>
+
+    <div id="taskFormContainer" class="hidden">
+        <form id="taskForm" method="POST" onsubmit="handleTaskSubmit(event);">
+            <input type="hidden" name="task_id" id="task_id">
+            <input type="text" name="name" id="task_name" placeholder="Task Name" required>
+            <input type="date" name="deadline" id="task_deadline" required>
+            <select name="event_id" id="task_event_id" required>
+                <option value="">Select Event</option>
+            </select>
+            <select name="attendee_id" id="attendee_id">
+                <option value="">Select Attendee (Optional)</option>
+            </select>
+            <select name="status" id="task_status" required>
+                <option value="Pending">Pending</option>
+                <option value="Completed">Completed</option>
+            </select>
+            <button type="submit">Add/Update Task</button>
+        </form>
+    </div>
+
+    <div id="taskListContainer" class="hidden">
+        <h2>Existing Tasks</h2>
+        <table id="taskList">
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Deadline</th>
+                    <th>Status</th>
+                    <th>Assigned Event</th>
+                    <th>Assigned Attendee</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6">No tasks available.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <button onclick="window.location.href='/'">Back to Landing Page</button>
+
+    <script>
+        const apiUrl = 'http://127.0.0.1:8000/api/tasks/';
+        const eventsApiUrl = 'http://127.0.0.1:8000/api/events/';
+        const attendeesApiUrl = 'http://127.0.0.1:8000/api/attendees/';
+        let events = {};
+        let attendees = {};
+
+        async function fetchApi(url, method = 'GET', body = null) {
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: body ? JSON.stringify(body) : null
+            };
+            const response = await fetch(url, options);
+            return response.json();
+        }
+
+        async function loadEventsAndAttendees() {
+            const eventsData = await fetchApi(eventsApiUrl);
+            const attendeesData = await fetchApi(attendeesApiUrl);
+
+            eventsData.forEach(event => {
+                events[event.id] = event.name;
+                const eventSelect = document.getElementById('task_event_id');
+                const option = document.createElement('option');
+                option.value = event.id;
+                option.textContent = event.name;
+                eventSelect.appendChild(option);
+            });
+
+            attendeesData.forEach(attendee => {
+                attendees[attendee.id] = attendee.name;
+                const attendeeSelect = document.getElementById('attendee_id');
+                const option = document.createElement('option');
+                option.value = attendee.id;
+                option.textContent = attendee.name;
+                attendeeSelect.appendChild(option);
+            });
+        }
+
+        async function showTaskList() {
+            const tasks = await fetchApi(apiUrl);
+            const taskList = document.getElementById('taskList').getElementsByTagName('tbody')[0];
+            taskList.innerHTML = ''; // Clear existing tasks
+
+            if (tasks.length === 0) {
+                taskList.innerHTML = '<tr><td colspan="6">No tasks available.</td></tr>';
+                return;
+            }
+
+            tasks.forEach(task => {
+                const row = taskList.insertRow();
+                row.insertCell(0).textContent = task.name;
+                row.insertCell(1).textContent = task.deadline;
+                row.insertCell(2).textContent = task.status;
+                row.insertCell(3).textContent = events[task.event] || 'N/A'; // Display event name
+                row.insertCell(4).textContent = attendees[task.assigned_attendee] || 'N/A'; // Display attendee name
+                const actionsCell = row.insertCell(5);
+                actionsCell.innerHTML = `
+                    <button onclick="editTask(${task.id})">Edit</button>
+                    <button onclick="deleteTask(${task.id})">Delete</button>
+                    <button onclick="toggleCompletion(${task.id})">${task.status === 'Completed' ? 'Mark as Pending' : 'Mark as Completed'}</button>
+                `;
+            });
+
+            document.getElementById('taskListContainer').classList.remove('hidden');
+        }
+
+        async function handleTaskSubmit(event) {
+            event.preventDefault();
+            const taskId = document.getElementById('task_id').value;
+            const taskData = {
+                name: document.getElementById('task_name').value,
+                deadline: document.getElementById('task_deadline').value,
+                event: document.getElementById('task_event_id').value,
+                assigned_attendee: document.getElementById('attendee_id').value,
+                status: document.getElementById('task_status').value
+            };
+
+            if (taskId) {
+                await fetchApi(`${apiUrl}${taskId}/`, 'PUT', taskData);
+                showMessage('Task updated successfully!', 'success');
+            } else {
+                await fetchApi(apiUrl, 'POST', taskData);
+                showMessage('Task added successfully!', 'success');
+            }
+
+            resetForm();
+            showTaskList();
+        }
+
+        function showAddForm() {
+            resetForm();
+            document.getElementById('taskFormContainer').classList.remove('hidden');
+            document.getElementById('taskListContainer').classList.add('hidden');
+        }
+
+        function resetForm() {
+            document.getElementById('taskForm').reset();
+            document.getElementById('task_id').value = '';
+        }
+
+        async function editTask(taskId) {
+            const task = await fetchApi(`${apiUrl}${taskId}/`);
+            document.getElementById('task_id').value = task.id;
+            document.getElementById('task_name').value = task.name;
+            document.getElementById('task_deadline').value = task.deadline;
+            document.getElementById('task_event_id').value = task.event;
+            document.getElementById('attendee_id').value = task.assigned_attendee;
+            document.getElementById('task_status').value = task.status;
+            showAddForm();
+        }
+
+        async function deleteTask(taskId) {
+            await fetchApi(`${apiUrl}${taskId}/`, 'DELETE');
+            showMessage('Task deleted successfully!', 'success');
+            showTaskList();
+        }
+
+        async function toggleCompletion(taskId) {
+            const task = await fetchApi(`${apiUrl}${taskId}/`);
+            const updatedStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
+            await fetchApi(`${apiUrl}${taskId}/`, 'PUT', { ...task, status: updatedStatus });
+            showMessage(`Task marked as ${updatedStatus}!`, 'success');
+            showTaskList();
+        }
+
+        function showMessage(message, type) {
+            const messageContainer = document.getElementById('messageContainer');
+            messageContainer.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                messageContainer.innerHTML = '';
+            }, 3000);
+        }
+
+        window.onload = loadEventsAndAttendees;
+    </script>
+</body>
+</html>
